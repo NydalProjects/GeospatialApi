@@ -12,4 +12,4 @@ RUN pip install -r requirements.txt
 # Make port 80 available to the world outside this container
 
 # Run app.py when the container launches
-CMD ["gunicorn", "-w", "2", "--threads", "2", "-b", "0.0.0.0:8080", "main:app"]
+CMD ["gunicorn", "-w", "8", "--threads", "2", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8080", "main:app"]
