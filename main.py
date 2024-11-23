@@ -1,124 +1,14 @@
-from typing import Dict, Tuple, List, Union
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from typing import Dict, Tuple, Union
 import geopandas as gpd
+import rasterio
 import rasterio.features
 import numpy as np
 import xarray as xr
-from shapely.geometry import Polygon, mapping
+import matplotlib.pyplot as plt
+from shapely.geometry import mapping
+from rasterio.transform import from_bounds
+import json
 import traceback
-
-app = FastAPI()
-
-@app.exception_handler(Exception)
-async def handle_error(request: Request, exc: Exception):
-    tb = traceback.format_exc()
-    error_message = f"An error occurred: {str(exc)}\n\n{tb}"
-    return JSONResponse(status_code=500, content={"error": error_message})
-
-@app.exception_handler(403)
-async def forbidden(request: Request, exc: HTTPException):
-    error_message = "Sorry, you do not have permission to access this resource."
-    return JSONResponse(status_code=403, content={"error": error_message})
-
-@app.exception_handler(404)
-async def page_not_found(request: Request, exc: HTTPException):
-    error_message = "Sorry, the requested page could not be found."
-    return JSONResponse(status_code=404, content={"error": error_message})
-
-def check_height_plateau_within_building_limits(rasters: Dict[str, np.ndarray]) -> bool:
-    if not isinstance(rasters, dict):
-        raise TypeError("rasters must be a dictionary of numpy arrays")
-    
-    building_limits = rasters.get("0.0")
-    if building_limits is None or not isinstance(building_limits, np.ndarray):
-        raise ValueError("Building limits must be a valid numpy array")
-    
-    for i, raster_row in rasters.items():
-        if not isinstance(raster_row, np.ndarray):
-            raise ValueError(f"Raster row {i} must be a valid numpy array")
-        
-        if float(i) <= 0.0:
-            continue
-        
-        intersection = raster_row * building_limits
-        intersection_sum = intersection.sum()
-        xr1_sum = raster_row.sum()
-        if not np.isclose(intersection_sum, xr1_sum, rtol=1e-03):
-            return False
-    
-    return True
-
-def cut_height_plateau_building_limits(rasters: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
-    try:
-        building_limits = rasters["0.0"]
-    except KeyError:
-        raise ValueError("Input dictionary must contain a key '0.0' with the building limits.")
-        
-    for i, raster_row in rasters.items():
-        if i != "0.0":
-            if not isinstance(i, float):
-                raise TypeError("Keys in input dictionary other than '0.0' must be floats representing height plateau values.")
-            raster_row[building_limits == 0] = 0
-            rasters[str(i)] = raster_row
-
-    return rasters
-
-def find_holes(rasters: Dict[str, np.ndarray]) -> bool:
-    rasters_maximum = None
-
-    # Find the maximum height for each cell
-    for i, raster_row in rasters.items():
-        if i != "0.0":
-            if rasters_maximum is None:
-                rasters_maximum = raster_row
-            else:
-                rasters_maximum = np.maximum(rasters_maximum, raster_row)
-
-    visited = rasters_maximum.copy().astype(bool)
-    
-    # Start a DFS from each boundary cell and mark all reachable cells as visited
-    for i in range(rasters_maximum.shape[0]):
-        for j in range(rasters_maximum.shape[1]):
-            if i == 0 or j == 0 or i == rasters_maximum.shape[0]-1 or j == rasters_maximum.shape[1]-1:
-                if not visited[i, j] and rasters_maximum[i, j] == 0:
-                    stack = [(i, j)]
-                    while stack:
-                        x, y = stack.pop()
-                        visited[x, y] = True
-                        if x > 0 and not visited[x-1, y] and rasters_maximum[x-1, y] == 0:
-                            stack.append((x-1, y))
-                        if x < rasters_maximum.shape[0]-1 and not visited[x+1, y] and rasters_maximum[x+1, y] == 0:
-                            stack.append((x+1, y))
-                        if y > 0 and not visited[x, y-1] and rasters_maximum[x, y-1] == 0:
-                            stack.append((x, y-1))
-                        if y < rasters_maximum.shape[1]-1 and not visited[x, y+1] and rasters_maximum[x, y+1] == 0:
-                            stack.append((x, y+1))
-    
-    # Check if there are any 0 values that were not marked as visited
-    if np.any(np.logical_and(rasters_maximum == 0, ~visited)):
-        return True
-    else:
-        return False
-
-def check_height_plateau_cover_building_limits(rasters: Dict[str, np.ndarray]) -> bool:
-    try:
-        maximum_height_plateaus = None
-
-        for i, raster_row in rasters.items():
-            if float(i) > 0.0:
-                if maximum_height_plateaus is None:
-                    maximum_height_plateaus = raster_row
-                else:
-                    maximum_height_plateaus = np.maximum(maximum_height_plateaus, raster_row)
-        if np.array_equal(maximum_height_plateaus, rasters["0.0"]):
-            return True
-        else:
-            return False
-    except Exception as e:
-        print("Error: Failed to check height plateau coverage of building limits")
-        print(str(e))
-        return False
 
 def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     try:
@@ -128,114 +18,160 @@ def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, 
             crs='epsg:4326'
         )
 
-        # Create GeoDataFrame from height_plateaus feature and set "elevation" as index
+        # Create GeoDataFrame from height_plateaus feature
         height_plateaus_gdf = gpd.GeoDataFrame.from_features(
             geo_dict['height_plateaus'],
             crs='epsg:4326'
-        ).set_index('elevation')
+        )
     except KeyError as e:
         raise ValueError("Failed to create GeoDataFrame: {}".format(str(e)))
 
     return building_limits_gdf, height_plateaus_gdf
 
-def split_building_limits(building_limits_gdf: gpd.GeoDataFrame, height_plateaus_gdf: gpd.GeoDataFrame) -> Union[gpd.GeoDataFrame, None]:
+def rasterize_geodataframes(
+    building_limits_gdf: gpd.GeoDataFrame,
+    height_plateaus_gdf: gpd.GeoDataFrame
+) -> Tuple[xr.DataArray, Tuple[float, float, float, float], gpd.GeoDataFrame]:
     try:
-        # Get the intersection of the two GeoDataFrames
-        intersect = gpd.overlay(building_limits_gdf, height_plateaus_gdf, how='intersection')
+        # Define the output raster parameters
+        # Get combined bounds
+        minx, miny, maxx, maxy = building_limits_gdf.total_bounds
+        h_minx, h_miny, h_maxx, h_maxy = height_plateaus_gdf.total_bounds
+        minx = min(minx, h_minx)
+        miny = min(miny, h_miny)
+        maxx = max(maxx, h_maxx)
+        maxy = max(maxy, h_maxy)
 
-        # Drop any columns from height_plateaus_gdf that are not in the intersection
-        cols = [c for c in height_plateaus_gdf.columns if c in intersect.columns]
-        cut_geoms = height_plateaus_gdf[cols].intersection(building_limits_gdf.unary_union)
+        # Define resolution (adjust as needed)
+        resolution = 0.0001  # Approx ~11 meters at the equator
+        width = int((maxx - minx) / resolution)
+        height = int((maxy - miny) / resolution)
 
-        # Create a new GeoDataFrame with the cut geometries
-        cut_gdf = gpd.GeoDataFrame(geometry=cut_geoms)
-        
-        return cut_gdf
+        # Define transform
+        transform = from_bounds(minx, miny, maxx, maxy, width, height)
 
-    except ValueError as e:
-        raise ValueError("Failed to split building limits: {}".format(str(e)))
+        # Rasterize building limits
+        building_limits_raster = rasterio.features.rasterize(
+            ((geom, 1) for geom in building_limits_gdf.geometry),
+            out_shape=(height, width),
+            transform=transform,
+            fill=0,
+            dtype='int16',
+            all_touched=True
+        )
 
-def rasterize_geodataframe(geodataframe: gpd.GeoDataFrame) -> Tuple[Dict[str, np.ndarray], float, float, float, float, float, float]:
-    try:
-        xmin, ymin, xmax, ymax = geodataframe.total_bounds
-        xres, yres = 0.00001, 0.00001
-        rasters = {}
-        
-        # Loop over each row in the GeoDataFrame and rasterize it
-        for i, row in geodataframe.iterrows():
-            if row.geometry is None:
-                raise ValueError(f"Null geometry found in row {i}")
-                
-            if not isinstance(row.geometry, Polygon):
-                raise ValueError(f"Geometry in row {i} is not a polygon")
-            
+        # Initialize height_plateaus_raster with zeros
+        height_plateaus_raster = np.zeros((height, width), dtype='float32')
+
+        # Rasterize each height plateau and sum their values
+        for idx, row in height_plateaus_gdf.iterrows():
+            elevation = row.get('elevation', 0)
+            geom = row.geometry
+            if geom.is_empty:
+                continue
             raster = rasterio.features.rasterize(
-                [row.geometry],
-                out_shape=(
-                    int((ymax - ymin) / yres),
-                    int((xmax - xmin) / xres)
-                ),
-                transform=rasterio.transform.from_bounds(
-                    xmin, ymin, xmax, ymax,
-                    int((xmax - xmin) / xres),
-                    int((ymax - ymin) / yres)
-                ),
-                all_touched=True,
+                [(geom, elevation)],
+                out_shape=(height, width),
+                transform=transform,
                 fill=0,
-                default_value=1,
-                dtype=rasterio.uint8
+                dtype='float32',
+                all_touched=True
             )
-            
-            rasters[str(i)] = raster
+            height_plateaus_raster += raster
 
-        return rasters, xmin, ymin, xmax, ymax, xres, yres
-    
+        # Create xarray DataArray
+        x_coords = np.linspace(minx, maxx, width)
+        y_coords = np.linspace(miny, maxy, height)
+
+        height_da = xr.DataArray(
+            height_plateaus_raster,
+            coords=[y_coords, x_coords],
+            dims=["y", "x"]
+        )
+
+        # Mask areas outside building limits
+        building_mask = building_limits_raster == 1
+
+        # Set areas outside building limits to -1
+        height_da = height_da.where(building_mask, other=-1)
+
+        # Set areas inside building limits but not covered by any height plateau to 0
+        inside_building_no_plateau = (building_mask) & (height_da == 0)
+        height_da = height_da.where(~inside_building_no_plateau, other=0)
+
+        # Reproject building_limits_gdf to match the raster CRS if needed
+        raster_crs = rasterio.crs.CRS.from_epsg(4326)  # Assuming EPSG:4326
+        if building_limits_gdf.crs != raster_crs:
+            building_limits_gdf = building_limits_gdf.to_crs(raster_crs)
+
+        return height_da, (minx, miny, maxx, maxy), building_limits_gdf
     except Exception as e:
-        raise e
+        raise ValueError(f"Failed to rasterize GeoDataFrames: {str(e)}")
 
-@app.post("/main")
-async def main_endpoint(geo_json: Dict):
+def visualize_height_da(height_da: xr.DataArray, building_limits_gdf: gpd.GeoDataFrame, bounds: Tuple[float, float, float, float]):
     try:
-        geo_dict = dict(geo_json)
+        # Plot the DataArray
+        fig, ax = plt.subplots(figsize=(12, 8))
+        cmap = plt.get_cmap('viridis').copy()
+        cmap.set_under(color='white')  # For values less than vmin
 
+        # Plot settings
+        im = height_da.plot.imshow(
+            ax=ax,
+            cmap=cmap,
+            vmin=0,  # Values less than 0 will use 'under' color
+            add_colorbar=True,
+            cbar_kwargs={'label': 'Height (units)'}
+        )
+
+        # Overlay the building limits boundary
+        building_limits_gdf.boundary.plot(
+            ax=ax,
+            edgecolor='black',  # Border line color
+            linewidth=1.5,       # Border line width
+            linestyle='--',      # Border line style (dashed)
+            label='Building Limits'
+        )
+
+        # Set plot limits to match the raster bounds
+        minx, miny, maxx, maxy = bounds
+        ax.set_xlim(minx, maxx)
+        ax.set_ylim(miny, maxy)
+
+        # Customize the plot
+        ax.set_title('Combined Height Plateaus and Building Limits')
+        ax.set_xlabel('Longitude')
+        ax.set_ylabel('Latitude')
+
+        # Add legend
+        ax.legend()
+
+        plt.show()
+    except Exception as e:
+        raise ValueError(f"Failed to visualize height DataArray: {str(e)}")
+
+def main():
+    try:
+        # Read the JSON data from file
+        with open('shapes.json', 'r') as f:
+            geo_dict = json.load(f)
+
+        # Read GeoDataFrames
         building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
-        split_building_limits_gdf = split_building_limits(building_limits_gdf, height_plateaus_gdf)
-        building_limits_height_plateaus_gdf = height_plateaus_gdf.append(building_limits_gdf)
-        
-        # Convert the geometry column to a dictionary using the __geo_interface__ attribute
-        split_building_limits_gdf['geometry'] = split_building_limits_gdf['geometry'].apply(
-            lambda x: mapping(x) if x else None
-        )
-        
-        # Convert the GeoDataFrame to a JSON-serializable dictionary
-        split_building_limits_gdf_dict = split_building_limits_gdf.to_dict(orient='records')
 
-        building_limits_height_plateaus_rasters, xmin, ymin, xmax, ymax, xres, yres = rasterize_geodataframe(building_limits_height_plateaus_gdf)
+        # Ensure 'elevation' column exists in height_plateaus_gdf
+        if 'elevation' not in height_plateaus_gdf.columns:
+            raise ValueError("Height plateaus GeoDataFrame must have an 'elevation' column.")
 
-        height_plateau_cover_building_limits = check_height_plateau_cover_building_limits(
-            rasters=building_limits_height_plateaus_rasters
-        )
-        is_hole_in_height_plateau = find_holes(rasters=building_limits_height_plateaus_rasters)
-        height_plateau_within_building_limits = check_height_plateau_within_building_limits(
-            rasters=building_limits_height_plateaus_rasters
-        )
+        # Rasterize GeoDataFrames
+        height_da, bounds, building_limits_gdf = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
 
-        return {
-            "height_plateau_within_building_limits": str(height_plateau_within_building_limits),
-            "is_hole_in_height_plateau": str(is_hole_in_height_plateau),
-            "height_plateau_cover_building_limits": str(height_plateau_cover_building_limits),
-            "split_building_limits": split_building_limits_gdf_dict
-        }
+        # Visualize the DataArray with building limits boundary
+        visualize_height_da(height_da, building_limits_gdf, bounds)
 
     except Exception as e:
         tb = traceback.format_exc()
-        error_message = f"An error occurred: {str(e)}\n\n{tb}"
-        return JSONResponse(status_code=500, content={"error": error_message})
+        print(f"An error occurred: {str(e)}\n\n{tb}")
 
-@app.get("/health/readiness")
-async def readiness():
-    return 'App is ready'
-
-@app.get("/health/liveness")
-async def liveness():
-    return 'App is living'
+if __name__ == "__main__":
+    main()
