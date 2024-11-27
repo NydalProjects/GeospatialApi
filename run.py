@@ -8,6 +8,7 @@ from typing import Dict, Tuple
 BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
 
 def rasterize():
+
     """Fetch rasterized data from the API."""
 
     response = requests.put(f"{BASE_URL}/rasterize")
