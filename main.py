@@ -4,7 +4,6 @@ import rasterio
 import rasterio.features
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
 from shapely.geometry import mapping, shape
 from rasterio.transform import from_bounds
 import json
