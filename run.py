@@ -173,6 +173,28 @@ def delete_height_plateau_by_elevation(elevation: float):
     else:
         print(f"Failed to delete height plateau: {response.text}")
 
+def split_building_limits():
+
+    """Fetch rasterized data from the API."""
+
+    response = requests.post(f"{BASE_URL}/split-building-limits")
+    print(response)
+    if response.status_code == 200:
+        print("Building limit splitted successfuly.")
+    else:
+        print("Failed splitting building limit.")
+
+def validate_height_plateaus():
+
+    """Fetch rasterized data from the API."""
+
+    response = requests.post(f"{BASE_URL}/validate-height-plateaus")
+    print(response)
+    if response.status_code == 200:
+        print("Building limit splitted successfuly.")
+    else:
+        print("Failed splitting building limit.")
+
 # if __name__ == "__main__":
 #     # Example: Delete a height plateau with elevation 3.75
 #     delete_height_plateau_by_elevation(3.63)

@@ -272,6 +272,76 @@ def rasterize_geodataframes(
         raise ValueError(f"Failed to rasterize GeoDataFrames: {str(e)}")
 
 
+def validate_height_plateaus_cover_building_limits(
+    building_limits_gdf: gpd.GeoDataFrame,
+    height_plateaus_gdf: gpd.GeoDataFrame
+) -> Tuple[bool, np.ndarray]:
+    """
+    Validates whether all areas inside the building limits are covered by height plateaus.
+    Returns:
+        - A boolean indicating if the building limits are fully covered.
+        - A NumPy array of coordinates where uncovered areas are found (if any).
+    """
+    try:
+        # Define rasterization parameters
+        minx, miny, maxx, maxy = building_limits_gdf.total_bounds
+
+        # Define resolution (adjust as needed)
+        resolution = 0.000005  # Approx ~0.5 meters at the equator
+        width = int((maxx - minx) / resolution)
+        height = int((maxy - miny) / resolution)
+
+        # Warn if the raster size is very large
+        total_cells = width * height
+        if total_cells > 1e8:
+            print(f"Warning: The raster size is very large ({total_cells} cells).")
+            print("This may consume a lot of memory and take a long time to process.")
+
+        # Define transform
+        transform = from_bounds(minx, miny, maxx, maxy, width, height)
+
+        # Rasterize building limits
+        building_limits_raster = rasterio.features.rasterize(
+            ((geom, 1) for geom in building_limits_gdf.geometry),
+            out_shape=(height, width),
+            transform=transform,
+            fill=0,
+            dtype="int16",
+            all_touched=True
+        )
+
+        # Rasterize height plateaus
+        height_plateaus_raster = np.zeros((height, width), dtype="int16")
+        for _, row in height_plateaus_gdf.iterrows():
+            mask_raster = rasterio.features.rasterize(
+                [(row.geometry, 1)],  # Use 1 as the value for the mask
+                out_shape=(height, width),
+                transform=transform,
+                fill=0,
+                dtype="int16",
+                all_touched=True
+            )
+            height_plateaus_raster = np.maximum(height_plateaus_raster, mask_raster)
+
+        # Check for uncovered areas inside building limits
+        uncovered_mask = (building_limits_raster == 1) & (height_plateaus_raster == 0)
+
+        # Get coordinates of uncovered areas
+        uncovered_coords = np.argwhere(uncovered_mask)
+
+        # Convert raster indices to geographic coordinates
+        uncovered_geo_coords = [
+            (minx + resolution * x, maxy - resolution * y) for y, x in uncovered_coords
+        ]
+
+        # Return validation result
+        is_fully_covered = not uncovered_mask.any()
+        return is_fully_covered, np.array(uncovered_geo_coords)
+
+    except Exception as e:
+        raise ValueError(f"Validation failed: {str(e)}")
+
+
 def add_height_plateau_to_firebase(geometry: Dict, height: float):
     """
     Adds a new height plateau to the Firebase database, preserving the required structure.
@@ -530,6 +600,25 @@ def split_building_limits():
         return {"message": "Splitted building limits written successfully to Firebase."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to split building limits: {str(e)}")
+
+@app.get("/validate-height-plateaus")
+def validate_height_plateaus():
+    """Validate whether all areas inside building limits are covered by height plateaus."""
+    try:
+        geo_dict = read_geojson_from_firebase()
+        building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
+
+        is_covered, uncovered_coords = validate_height_plateaus_cover_building_limits(
+            building_limits_gdf, height_plateaus_gdf
+        )
+
+        return {
+            "is_covered": is_covered,
+            "uncovered_coords": uncovered_coords.tolist()  # Convert to list for JSON serialization
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+
 
 # @app.get("/visualize")
 # def visualize():
