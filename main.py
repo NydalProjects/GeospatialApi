@@ -404,8 +404,10 @@ def rasterize():
         geo_dict = read_geojson_from_firebase()
         building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
         height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
+        sanitized_height_da = np.nan_to_num(height_da.values, nan=None, posinf=None, neginf=None)
+
         return {
-            "height_da": height_da.values.tolist(),
+            "height_da": sanitized_height_da.tolist(),
             "bounds": bounds,
         }
     except Exception as e:
