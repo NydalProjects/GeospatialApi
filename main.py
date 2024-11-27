@@ -53,28 +53,48 @@ def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
     """
     Ensures every feature in the GeoJSON contains a 'properties' field.
     If the 'properties' field is missing, an empty dictionary is added.
+    It also flattens nested 'properties' fields if found.
     """
     try:
-        # Ensure 'properties' exists for each feature in building_limits
-        if 'features' in geo_dict['building_limits']:
+        # Process building_limits
+        if 'features' in geo_dict.get('building_limits', {}):
             for feature in geo_dict['building_limits']['features']:
+                # Ensure properties exists
                 if 'properties' not in feature:
                     feature['properties'] = {}
 
-        # Ensure 'properties' exists for each feature in height_plateaus
-        if 'features' in geo_dict['height_plateaus']:
+                # Flatten nested properties if present
+                if isinstance(feature['properties'], dict) and 'properties' in feature['properties']:
+                    feature['properties'].update(feature['properties'].pop('properties'))
+
+        # Process height_plateaus
+        if 'features' in geo_dict.get('height_plateaus', {}):
             for feature in geo_dict['height_plateaus']['features']:
+                # Ensure properties exists
                 if 'properties' not in feature:
                     feature['properties'] = {}
 
+                # Flatten nested properties if present
+                if isinstance(feature['properties'], dict) and 'properties' in feature['properties']:
+                    feature['properties'].update(feature['properties'].pop('properties'))
+
+                # Ensure elevation is a valid numeric value
+                elevation = feature['properties'].get('elevation')
+                if elevation is not None:
+                    try:
+                        feature['properties']['elevation'] = float(elevation)
+                    except (ValueError, TypeError):
+                        raise ValueError(f"Invalid elevation value: {elevation}")
     except KeyError as e:
         raise ValueError(f"Error in GeoJSON structure: {str(e)}")
-    
+
     return geo_dict
 
 
-
 def read_geojson_from_firebase() -> Dict:
+    """
+    Reads data from Firebase and ensures it conforms to the expected GeoJSON structure.
+    """
     try:
         # Reference to the root of the database
         ref = db.reference('/')
@@ -82,13 +102,14 @@ def read_geojson_from_firebase() -> Dict:
         # Fetch the data
         data = ref.get()
 
-        # Ensure data contains 'building_limits' and 'height_plateaus'
+        # Validate presence of required keys
         if 'building_limits' not in data or 'height_plateaus' not in data:
             raise ValueError("Database must contain 'building_limits' and 'height_plateaus' keys.")
 
-
+        # Normalize GeoJSON structure
         data = ensure_properties_in_geojson(data)
 
+        # Prepare the final GeoJSON dictionary
         geo_dict = {
             'building_limits': data['building_limits'],
             'height_plateaus': data['height_plateaus']
@@ -97,6 +118,57 @@ def read_geojson_from_firebase() -> Dict:
         return geo_dict
     except Exception as e:
         raise ValueError(f"Failed to read data from Firebase: {str(e)}")
+
+
+
+# def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
+#     """
+#     Ensures every feature in the GeoJSON contains a 'properties' field.
+#     If the 'properties' field is missing, an empty dictionary is added.
+#     """
+#     try:
+#         # Ensure 'properties' exists for each feature in building_limits
+#         if 'features' in geo_dict['building_limits']:
+#             for feature in geo_dict['building_limits']['features']:
+#                 if 'properties' not in feature:
+#                     feature['properties'] = {}
+
+#         # Ensure 'properties' exists for each feature in height_plateaus
+#         if 'features' in geo_dict['height_plateaus']:
+#             for feature in geo_dict['height_plateaus']['features']:
+#                 if 'properties' not in feature:
+#                     feature['properties'] = {}
+
+#     except KeyError as e:
+#         raise ValueError(f"Error in GeoJSON structure: {str(e)}")
+    
+#     return geo_dict
+
+
+
+# def read_geojson_from_firebase() -> Dict:
+#     try:
+#         # Reference to the root of the database
+#         ref = db.reference('/')
+
+#         # Fetch the data
+#         data = ref.get()
+
+#         # Ensure data contains 'building_limits' and 'height_plateaus'
+#         if 'building_limits' not in data or 'height_plateaus' not in data:
+#             raise ValueError("Database must contain 'building_limits' and 'height_plateaus' keys.")
+
+
+#         data = ensure_properties_in_geojson(data)
+
+#         geo_dict = {
+#             'building_limits': data['building_limits'],
+#             'height_plateaus': data['height_plateaus']
+#         }
+
+#         return geo_dict
+#     except Exception as e:
+#         raise ValueError(f"Failed to read data from Firebase: {str(e)}")
 
 def write_polygons_to_firebase(
     building_limits_gdf: gpd.GeoDataFrame,
