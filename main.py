@@ -413,17 +413,17 @@ def rasterize():
         raise HTTPException(status_code=500, detail=f"Failed to rasterize: {str(e)}")
 
 
-@app.get("/visualize")
-def visualize():
-    """Visualize the building limits and height plateaus."""
-    try:
-        geo_dict = read_geojson_from_firebase()
-        building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
-        height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
-        visualize_height_da(height_da, building_limits_gdf, height_plateaus_gdf, bounds)
-        return {"message": "Visualization completed. Check your plot window."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to visualize: {str(e)}")
+# @app.get("/visualize")
+# def visualize():
+#     """Visualize the building limits and height plateaus."""
+#     try:
+#         geo_dict = read_geojson_from_firebase()
+#         building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
+#         height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
+#         visualize_height_da(height_da, building_limits_gdf, height_plateaus_gdf, bounds)
+#         return {"message": "Visualization completed. Check your plot window."}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to visualize: {str(e)}")
 
 
 
