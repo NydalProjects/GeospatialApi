@@ -162,14 +162,29 @@ def update_firebase():
             print(f"Failed to add height plateau: {response.text}")
 
 
+def delete_height_plateau_by_elevation(elevation: float):
+    """Delete height plateaus by specifying elevation."""
+    response = requests.delete(
+        f"{BASE_URL}/delete-height-plateau",
+        json={"height": elevation}
+    )
+    if response.status_code == 200:
+        print(f"Height plateau with elevation {elevation} deleted successfully.")
+    else:
+        print(f"Failed to delete height plateau: {response.text}")
+
+if __name__ == "__main__":
+    # Example: Delete a height plateau with elevation 3.75
+    delete_height_plateau_by_elevation(3.63)
+
 
 # if __name__ == "__main__":
 #     update_firebase()
 
-if __name__ == "__main__":
-    # Fetch and visualize rasterized data
-    rasterized_data, bounds = rasterize()
-    print(rasterized_data)
-    print(bounds)
-    if rasterized_data is not None and rasterized_data.size > 0:
-        visualize_rasterized_data(rasterized_data, bounds)
+# if __name__ == "__main__":
+#     # Fetch and visualize rasterized data
+#     rasterized_data, bounds = rasterize()
+#     print(rasterized_data)
+#     print(bounds)
+#     if rasterized_data is not None and rasterized_data.size > 0:
+#         visualize_rasterized_data(rasterized_data, bounds)

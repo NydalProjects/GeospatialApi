@@ -311,24 +311,29 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
 
 
 
-def delete_height_plateau_from_firebase(target_height: float):
+def delete_height_plateau_from_firebase(target_elevation: float):
     """
-    Deletes a specific height plateau with a given height value from the Firebase database.
+    Deletes a specific height plateau with a given elevation value from the Firebase database.
     
     Parameters:
-    - target_height: The height value of the plateau to delete.
+    - target_elevation: The elevation value of the plateau to delete.
     """
     try:
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
 
-        # Filter out the plateau with the target height
+        # Check if height_plateaus has the expected structure
+        if "features" not in geo_dict["height_plateaus"]:
+            print("No features found in height_plateaus.")
+            return
+
+        # Filter out the plateau with the target elevation
         filtered_features = [
             feature for feature in geo_dict["height_plateaus"]["features"]
-            if feature["properties"].get("height") != target_height
+            if feature["properties"].get("elevation") != target_elevation
         ]
 
-        # Update the height plateaus
+        # Update the height_plateaus with the filtered features
         geo_dict["height_plateaus"]["features"] = filtered_features
 
         # Write back to Firebase
@@ -341,9 +346,10 @@ def delete_height_plateau_from_firebase(target_height: float):
             )
         )
 
-        print(f"Height plateau with height {target_height} deleted successfully!")
+        print(f"Height plateau with elevation {target_elevation} deleted successfully!")
     except Exception as e:
         print(f"Failed to delete height plateau: {str(e)}")
+
 
 
 def modify_building_limits_in_firebase(new_geometry: Dict):
