@@ -15,7 +15,20 @@ def rasterize():
     print(response)
     if response.status_code == 200:
         print("Rasterized data retrieved successfully.")
-        return response.json()
+        rasterized_data = response.json()
+
+        # Deserialize the rasterized data into an xarray DataArray
+        height_da = xr.DataArray(
+            np.array(rasterized_data["height_da"]),  # Convert list back to NumPy array
+            coords=[
+                rasterized_data["y_coords"],  # y-coordinates
+                rasterized_data["x_coords"],  # x-coordinates
+            ],
+            dims=["y", "x"],  # Dimension names
+        )
+
+        bounds = rasterized_data["bounds"]  # Bounds for further use
+        return height_da, bounds
     else:
         print(f"Failed to rasterize: {response.text}")
         return None

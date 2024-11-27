@@ -440,10 +440,14 @@ def rasterize():
         height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
         logging.info("rasterize_geodataframes completed")
 
-        return {
-            "height_da": height_da,
+        response_data = {
+            "height_da": height_da.values.tolist(),  # Convert NumPy array to list
+            "x_coords": height_da.coords["x"].values.tolist(),  # Serialize x-coordinates
+            "y_coords": height_da.coords["y"].values.tolist(),  # Serialize y-coordinates
             "bounds": bounds,
         }
+        return response_data
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rasterize: {str(e)}")
 
