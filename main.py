@@ -21,7 +21,7 @@ import geopandas as gpd
 
 def get_firebase_credentials():
     client = secretmanager.SecretManagerServiceClient()
-    secret_name = "projects/861222091615/secrets/firebase-secret"
+    secret_name = "projects/861222091615/secrets/firebase-secret/versions/1"
     response = client.access_secret_version(request={"name": secret_name})
     return response.payload.data.decode("UTF-8")
 
