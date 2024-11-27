@@ -19,6 +19,11 @@ import geopandas as gpd
 
 # Firebase Initialization
 
+def get_firebase_credentials():
+    client = secretmanager.SecretManagerServiceClient()
+    secret_name = "projects/861222091615/secrets/firebase-secret"
+    response = client.access_secret_version(request={"name": secret_name})
+    return response.payload.data.decode("UTF-8")
 
 def initialize_firebase():
     try:
@@ -42,12 +47,6 @@ def initialize_firebase():
 app = FastAPI()
 initialize_firebase()
 
-
-def get_firebase_credentials():
-    client = secretmanager.SecretManagerServiceClient()
-    secret_name = "projects/861222091615/secrets/firebase-secret"
-    response = client.access_secret_version(request={"name": secret_name})
-    return response.payload.data.decode("UTF-8")
 
 def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
     """
