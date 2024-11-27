@@ -447,7 +447,7 @@ def rasterize():
         logging.info(sanitized_list)
 
         return {
-            "height_da": sanitized_height_da.tolist(),
+            "height_da": "height",
             "bounds": bounds,
         }
     except Exception as e:
