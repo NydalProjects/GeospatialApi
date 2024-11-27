@@ -4,7 +4,15 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy the current directory contents into the container at /app
+
+RUN apt-get update && apt-get install -y \
+    libexpat1 \
+    libgdal-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . /app
+
 
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
