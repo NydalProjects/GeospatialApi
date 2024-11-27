@@ -280,9 +280,13 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
         new_plateau = {
             "type": "Feature",
             "geometry": geometry,
-            "properties": {"height": height}
+            "properties": {"elevation": height}  # Ensure 'properties' and 'elevation' keys are present
         }
+
         geo_dict["height_plateaus"]["features"].append(new_plateau)
+
+        # Validate the structure
+        ensure_properties_in_geojson(geo_dict)
 
         # Write back to Firebase
         write_polygons_to_firebase(
@@ -297,6 +301,7 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
         print("Height plateau added successfully!")
     except Exception as e:
         print(f"Failed to add height plateau: {str(e)}")
+
 
 
 def delete_height_plateau_from_firebase(target_height: float):
@@ -350,9 +355,12 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
             {
                 "type": "Feature",
                 "geometry": new_geometry,
-                "properties": {}
+                "properties": {}  # Ensure 'properties' key is present
             }
         ]
+
+        # Validate the structure
+        ensure_properties_in_geojson(geo_dict)
 
         # Write back to Firebase
         write_polygons_to_firebase(

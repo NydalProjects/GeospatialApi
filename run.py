@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from typing import Dict, Tuple
+import requests
 
 BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
 
@@ -86,10 +87,114 @@ def visualize_rasterized_data(height_da: Dict, bounds):
         print(f"Failed to visualize rasterized data: {str(e)}")
 
 
+# if __name__ == "__main__":
+#     # Fetch and visualize rasterized data
+#     rasterized_data, bounds = rasterize()
+#     print(rasterized_data)
+#     print(bounds)
+#     if rasterized_data is not None and rasterized_data.size > 0:
+#         visualize_rasterized_data(rasterized_data, bounds)
+
+def update_firebase():
+    """Update Firebase with modified building limits and height plateaus."""
+    # Slightly modified building limits polygon
+    new_building_limits = {
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [10.7579, 59.9134],
+                    [10.7566, 59.9137],
+                    [10.7564, 59.9135],
+                    [10.7563, 59.9133],
+                    [10.7561, 59.9129],
+                    [10.7563, 59.9129],
+                    [10.7575, 59.9128],
+                    [10.7579, 59.9134]
+                ]
+            ]
+        },
+        "properties": {}
+    }
+
+    # Slightly modified height plateaus polygons
+    new_height_plateaus = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [10.7568, 59.9129],
+                        [10.7575, 59.9128],
+                        [10.7579, 59.9134],
+                        [10.7573, 59.9135],
+                        [10.7568, 59.9129]
+                    ]
+                ]
+            },
+            "properties": {"elevation": 3.75}
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [10.7570, 59.9132],
+                        [10.7573, 59.9135],
+                        [10.7566, 59.9137],
+                        [10.7565, 59.9135],
+                        [10.7564, 59.9134],
+                        [10.7570, 59.9132]
+                    ]
+                ]
+            },
+            "properties": {"elevation": 4.75}
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [10.7564, 59.9133],
+                        [10.7563, 59.9133],
+                        [10.7561, 59.9129],
+                        [10.7563, 59.9129],
+                        [10.7568, 59.9129],
+                        [10.7570, 59.9132],
+                        [10.7564, 59.9133]
+                    ]
+                ]
+            },
+            "properties": {"elevation": 2.75}
+        }
+    ]
+
+    # Update building limits
+    modify_request = {"new_geometry": new_building_limits["geometry"]}
+    response = requests.put(f"{BASE_URL}/modify-building-limits", json=modify_request)
+
+    if response.status_code == 200:
+        print("Building limits updated successfully.")
+    else:
+        print(f"Failed to update building limits: {response.text}")
+
+    # Update height plateaus
+    for plateau in new_height_plateaus:
+        add_request = {
+            "geometry": plateau["geometry"],
+            "height": plateau["properties"]["elevation"]
+        }
+        response = requests.post(f"{BASE_URL}/add-height-plateau", json=add_request)
+        if response.status_code == 200:
+            print("Height plateau added successfully.")
+        else:
+            print(f"Failed to add height plateau: {response.text}")
+
+
 if __name__ == "__main__":
-    # Fetch and visualize rasterized data
-    rasterized_data, bounds = rasterize()
-    print(rasterized_data)
-    print(bounds)
-    if rasterized_data is not None and rasterized_data.size > 0:
-        visualize_rasterized_data(rasterized_data, bounds)
+    # Update Firebase with modified data
+    update_firebase()
