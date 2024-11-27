@@ -115,7 +115,7 @@ def update_firebase():
         ]
     }
 
-    # Correctly structured height plateaus as a list of Features
+    # Correctly structured height plateaus as a FeatureCollection
     new_height_plateaus = {
         "type": "FeatureCollection",
         "features": [
@@ -135,47 +135,15 @@ def update_firebase():
                 },
                 "properties": {"elevation": 3.75}
             },
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [10.7570, 59.9132],
-                            [10.7573, 59.9135],
-                            [10.7566, 59.9137],
-                            [10.7565, 59.9135],
-                            [10.7564, 59.9134],
-                            [10.7570, 59.9132]
-                        ]
-                    ]
-                },
-                "properties": {"elevation": 4.75}
-            },
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [10.7564, 59.9133],
-                            [10.7563, 59.9133],
-                            [10.7561, 59.9129],
-                            [10.7563, 59.9129],
-                            [10.7568, 59.9129],
-                            [10.7570, 59.9132],
-                            [10.7564, 59.9133]
-                        ]
-                    ]
-                },
-                "properties": {"elevation": 2.75}
-            }
+            # Add additional features as required
         ]
     }
 
     # Update building limits
-    modify_request = {"new_geometry": new_building_limits["features"][0]["geometry"]}
-    response = requests.put(f"{BASE_URL}/modify-building-limits", json=modify_request)
+    response = requests.put(
+        f"{BASE_URL}/modify-building-limits",
+        json={"new_geometry": new_building_limits["features"][0]["geometry"]}
+    )
 
     if response.status_code == 200:
         print("Building limits updated successfully.")
@@ -184,15 +152,15 @@ def update_firebase():
 
     # Update height plateaus
     for plateau in new_height_plateaus["features"]:
-        add_request = {
-            "geometry": plateau["geometry"],
-            "height": plateau["properties"]["elevation"]
-        }
-        response = requests.post(f"{BASE_URL}/add-height-plateau", json=add_request)
+        response = requests.post(
+            f"{BASE_URL}/add-height-plateau",
+            json={"geometry": plateau["geometry"], "height": plateau["properties"]["elevation"]}
+        )
         if response.status_code == 200:
             print("Height plateau added successfully.")
         else:
             print(f"Failed to add height plateau: {response.text}")
+
 
 
 # if __name__ == "__main__":

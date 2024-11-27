@@ -126,20 +126,24 @@ def write_polygons_to_firebase(
         # Reference to the root of the database
         ref = db.reference('/')
 
-        # Prepare the data to be written
+        # Prepare the data to be written with the correct structure
         data = {
             'building_limits': {
-                "features": building_limits_features  # Ensure "features" is the top-level key
+                "type": "FeatureCollection",
+                "features": building_limits_features
             },
             'height_plateaus': {
-                "features": height_plateaus_features  # Ensure "features" is the top-level key
+                "type": "FeatureCollection",
+                "features": height_plateaus_features
             }
         }
 
         # Write data to Firebase
         ref.set(data)
+        print("Polygons successfully written to Firebase.")
     except Exception as e:
         raise ValueError(f"Failed to write polygons to Firebase: {str(e)}")
+
 
 def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     try:
