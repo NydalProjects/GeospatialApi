@@ -203,13 +203,15 @@ def rasterize_geodataframes(
 
         # Rasterize building limits
         building_limits_raster = rasterio.features.rasterize(
-            ((geom, scalar) for geom in building_limits_gdf.geometry),
+            ((geom, 1) for geom in building_limits_gdf.geometry),
             out_shape=(height, width),
             transform=transform,
-            fill=0.0,
-            dtype='float64',
+            fill=0,
+            dtype='int16',
             all_touched=True
         )
+        building_limits_raster = building_limits_raster.astype('float64')
+
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
         height_plateaus_raster = np.zeros((height, width), dtype='float64')
@@ -222,13 +224,15 @@ def rasterize_geodataframes(
             if geom.is_empty:
                 continue
             mask_raster = rasterio.features.rasterize(
-                [(geom, scalar)],  # Use 1 as the value for the mask
+                [(geom, 1)],  # Use 1 as the value for the mask
                 out_shape=(height, width),
                 transform=transform,
-                fill=0.0,
-                dtype='float64',
+                fill=0,
+                dtype='int16',
                 all_touched=True
             )
+            raster = mask_raster.astype('float64') * elevation  # Convert to float64 and apply elevation
+
 
             # Multiply the mask by elevation to apply the height
             raster = mask_raster * elevation
