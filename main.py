@@ -208,7 +208,6 @@ def rasterize_geodataframes(
             dtype='int16',
             all_touched=True
         )
-        building_limits_raster = building_limits_raster.astype('float32')  # Convert to desired dtype
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
         height_plateaus_raster = np.zeros((height, width), dtype='float32')
@@ -220,14 +219,17 @@ def rasterize_geodataframes(
             geom = row.geometry
             if geom.is_empty:
                 continue
-            raster = rasterio.features.rasterize(
-                [(geom, elevation)],
+            mask_raster = rasterio.features.rasterize(
+                [(geom, 1)],  # Use 1 as the value for the mask
                 out_shape=(height, width),
                 transform=transform,
-                fill=0,
+                fill=0.0,
                 dtype='float32',
                 all_touched=True
             )
+
+            # Multiply the mask by elevation to apply the height
+            raster = mask_raster * elevation
             height_plateaus_raster += raster
 
         # Create xarray DataArray
