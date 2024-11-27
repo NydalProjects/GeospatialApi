@@ -205,12 +205,11 @@ def rasterize_geodataframes(
             out_shape=(height, width),
             transform=transform,
             fill=0,
-            dtype='int8',
             all_touched=True
         )
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
-        height_plateaus_raster = np.zeros((height, width), dtype='float64')
+        height_plateaus_raster = np.zeros((height, width))
 
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
