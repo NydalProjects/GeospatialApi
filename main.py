@@ -92,8 +92,13 @@ def read_geojson_from_firebase() -> Dict:
         # Reference to the root of the database
         ref = db.reference('/')
 
-        # Fetch the data
-        data = ref.get()
+        def read_transaction(current_data):
+            if current_data is None:
+                raise ValueError("Database is empty.")
+            return current_data
+
+        # Perform the transaction
+        data = ref.transaction(read_transaction)
 
         # Validate presence of required keys
         if 'building_limits' not in data or 'height_plateaus' not in data:
@@ -107,11 +112,11 @@ def read_geojson_from_firebase() -> Dict:
             'building_limits': data['building_limits'],
             'height_plateaus': data['height_plateaus']
         }
-        
 
         return geo_dict
     except Exception as e:
         raise ValueError(f"Failed to read data from Firebase: {str(e)}")
+
 
 
 def write_polygons_to_firebase(
@@ -140,11 +145,16 @@ def write_polygons_to_firebase(
             }
         }
 
-        # Write data to Firebase
-        ref.set(data)
+        def write_transaction(current_data):
+            return data
+
+        # Perform the transaction
+        ref.transaction(write_transaction)
+
         print("Polygons successfully written to Firebase.")
     except Exception as e:
         raise ValueError(f"Failed to write polygons to Firebase: {str(e)}")
+
 
 
 def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -540,7 +550,6 @@ class DeleteHeightPlateauRequest(BaseModel):
 @app.get("/")
 def root():
     return {"message": "Geospatial API is running."}
-
 
 
 @app.get("/upload-shapes")

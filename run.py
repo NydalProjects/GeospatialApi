@@ -199,6 +199,18 @@ def validate_height_plateaus():
     else:
         print("Validation of height plateaus failed")
 
+def upload_shapes_to_firebase():
+
+    """Fetch rasterized data from the API."""
+
+    response = requests.get(f"{BASE_URL}/upload-shapes")
+    if response.status_code == 200:
+        print(f"Files are uploaded to firebase successfully")
+
+    else:
+        print("Files failed to upload to firebase database")
+
+# upload_shapes_to_firebase()
 
 # if __name__ == "__main__":
 #     # Example: Delete a height plateau with elevation 3.75
@@ -208,10 +220,10 @@ def validate_height_plateaus():
 # if __name__ == "__main__":
 #     update_firebase()
 
-# if __name__ == "__main__":
-#     # Fetch and visualize rasterized data
-#     rasterized_data, bounds = rasterize()
-#     print(rasterized_data)
-#     print(bounds)
-#     if rasterized_data is not None and rasterized_data.size > 0:
-#         visualize_rasterized_data(rasterized_data, bounds)
+if __name__ == "__main__":
+    # Fetch and visualize rasterized data
+    rasterized_data, bounds = rasterize()
+    print(rasterized_data)
+    print(bounds)
+    if rasterized_data is not None and rasterized_data.size > 0:
+        visualize_rasterized_data(rasterized_data, bounds)
