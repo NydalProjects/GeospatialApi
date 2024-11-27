@@ -9,6 +9,7 @@ from shapely.geometry import mapping, shape
 from rasterio.transform import from_bounds
 import json
 import traceback
+import pandas as pd
 import firebase_admin
 from firebase_admin import credentials, db
 import os
@@ -110,61 +111,12 @@ def read_geojson_from_firebase() -> Dict:
             'building_limits': data['building_limits'],
             'height_plateaus': data['height_plateaus']
         }
+        
 
         return geo_dict
     except Exception as e:
         raise ValueError(f"Failed to read data from Firebase: {str(e)}")
 
-
-
-# def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
-#     """
-#     Ensures every feature in the GeoJSON contains a 'properties' field.
-#     If the 'properties' field is missing, an empty dictionary is added.
-#     """
-#     try:
-#         # Ensure 'properties' exists for each feature in building_limits
-#         if 'features' in geo_dict['building_limits']:
-#             for feature in geo_dict['building_limits']['features']:
-#                 if 'properties' not in feature:
-#                     feature['properties'] = {}
-
-#         # Ensure 'properties' exists for each feature in height_plateaus
-#         if 'features' in geo_dict['height_plateaus']:
-#             for feature in geo_dict['height_plateaus']['features']:
-#                 if 'properties' not in feature:
-#                     feature['properties'] = {}
-
-#     except KeyError as e:
-#         raise ValueError(f"Error in GeoJSON structure: {str(e)}")
-    
-#     return geo_dict
-
-
-
-# def read_geojson_from_firebase() -> Dict:
-#     try:
-#         # Reference to the root of the database
-#         ref = db.reference('/')
-
-#         # Fetch the data
-#         data = ref.get()
-
-#         # Ensure data contains 'building_limits' and 'height_plateaus'
-#         if 'building_limits' not in data or 'height_plateaus' not in data:
-#             raise ValueError("Database must contain 'building_limits' and 'height_plateaus' keys.")
-
-
-#         data = ensure_properties_in_geojson(data)
-
-#         geo_dict = {
-#             'building_limits': data['building_limits'],
-#             'height_plateaus': data['height_plateaus']
-#         }
-
-#         return geo_dict
-#     except Exception as e:
-#         raise ValueError(f"Failed to read data from Firebase: {str(e)}")
 
 def write_polygons_to_firebase(
     building_limits_gdf: gpd.GeoDataFrame,
@@ -205,6 +157,15 @@ def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, 
             geo_dict['height_plateaus'],
             crs='epsg:4326'
         )
+
+        if 'elevation' not in height_plateaus_gdf.columns:
+            height_plateaus_gdf['elevation'] = 0.0  # Default elevation if missing
+        else:
+            # Convert elevation to numeric, replacing invalid values with 0.0
+            height_plateaus_gdf['elevation'] = pd.to_numeric(
+                height_plateaus_gdf['elevation'], errors='coerce'
+            ).fillna(0.0)
+
     except KeyError as e:
         raise ValueError("Failed to create GeoDataFrame: {}".format(str(e)))
 
@@ -225,7 +186,7 @@ def rasterize_geodataframes(
         maxy = max(maxy, h_maxy)
 
         # Define resolution (adjust as needed)
-        resolution = 0.00005  # Approx ~0.5 meters at the equator
+        resolution = 0.0005  # Approx ~0.5 meters at the equator
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
 
@@ -268,7 +229,6 @@ def rasterize_geodataframes(
                 out_shape=(height, width),
                 transform=transform,
                 fill=0,
-                dtype='float64',
                 all_touched=True
             )
             height_plateaus_raster = np.maximum(height_plateaus_raster, raster)
