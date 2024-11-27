@@ -139,8 +139,6 @@ def write_polygons_to_firebase(
 
 def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     try:
-
-        print(geo_dict)
         
         # Create GeoDataFrame from building_limits feature
         building_limits_gdf = gpd.GeoDataFrame.from_features(
@@ -154,13 +152,8 @@ def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, 
             crs='epsg:4326'
         )
 
-        if 'elevation' not in height_plateaus_gdf.columns:
-            height_plateaus_gdf['elevation'] = 0.0  # Default elevation if missing
-        else:
-            # Convert elevation to numeric and handle invalid values
-            height_plateaus_gdf['elevation'] = pd.to_numeric(
-                height_plateaus_gdf['elevation'], errors='coerce'
-            ).fillna(0.0).astype('float32')
+        print(height_plateaus_gdf)
+
 
     except KeyError as e:
         raise ValueError("Failed to create GeoDataFrame: {}".format(str(e)))
@@ -198,7 +191,6 @@ def rasterize_geodataframes(
 
         # Define transform
         transform = from_bounds(minx, miny, maxx, maxy, width, height)
-        scalar = np.float64(1)
 
 
         # Rasterize building limits
@@ -210,6 +202,7 @@ def rasterize_geodataframes(
             dtype='int16',
             all_touched=True
         )
+        print("building_limits_raster")
         # building_limits_raster = building_limits_raster.astype(rasterio.float64)
 
 
@@ -236,7 +229,9 @@ def rasterize_geodataframes(
 
             # Multiply the mask by elevation to apply the height
             raster = mask_raster * elevation
+            print("multiplied elevation")
             height_plateaus_raster += raster
+        print("building_limits_raster")
 
         # Create xarray DataArray
         x_coords = np.linspace(minx, maxx, width)
@@ -444,12 +439,6 @@ def rasterize():
         building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
         height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
         logging.info("rasterize_geodataframes completed")
-        sanitized_height_da = np.nan_to_num(height_da.values, nan=None, posinf=None, neginf=None)
-        logging.info("sanitized_height_da")
-        logging.info(sanitized_height_da)
-        logging.info(type(sanitized_height_da))
-        sanitized_list = sanitized_height_da.tolist()
-        logging.info(sanitized_list)
 
         return {
             "height_da": "height",
