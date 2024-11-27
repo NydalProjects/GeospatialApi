@@ -48,13 +48,15 @@ jobs:
         - name: Push Docker image
           run: docker push us-central1-docker.pkg.dev/master-253005/nydalprojects/my-app:latest
 
-        - name: Deploy to Cloud Run
+        - name: Deploy to Cloud Run using the deploy service account
           run: |
+            DEPLOY_SERVICE_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
             gcloud run deploy my-cloud-run-service \
               --image us-central1-docker.pkg.dev/master-253005/nydalprojects/my-app:latest \
               --region us-central1 \
               --platform managed \
               --allow-unauthenticated \
+              --service-account=${DEPLOY_SERVICE_ACCOUNT} \
               --port 8080 \
               --memory 4Gi \
               --cpu 2
