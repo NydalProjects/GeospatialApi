@@ -53,24 +53,18 @@ def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
     """
     Ensures every feature in the GeoJSON contains a 'properties' field.
     If the 'properties' field is missing, an empty dictionary is added.
-    It also flattens nested 'properties' fields if found.
+    It also flattens nested 'properties' fields and ensures numeric elevation values.
     """
     try:
         # Process building_limits
         if 'features' in geo_dict.get('building_limits', {}):
             for feature in geo_dict['building_limits']['features']:
-                # Ensure properties exists
                 if 'properties' not in feature:
                     feature['properties'] = {}
-
-                # Flatten nested properties if present
-                if isinstance(feature['properties'], dict) and 'properties' in feature['properties']:
-                    feature['properties'].update(feature['properties'].pop('properties'))
 
         # Process height_plateaus
         if 'features' in geo_dict.get('height_plateaus', {}):
             for feature in geo_dict['height_plateaus']['features']:
-                # Ensure properties exists
                 if 'properties' not in feature:
                     feature['properties'] = {}
 
@@ -78,13 +72,15 @@ def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
                 if isinstance(feature['properties'], dict) and 'properties' in feature['properties']:
                     feature['properties'].update(feature['properties'].pop('properties'))
 
-                # Ensure elevation is a valid numeric value
+                # Ensure elevation is a valid float
                 elevation = feature['properties'].get('elevation')
                 if elevation is not None:
                     try:
                         feature['properties']['elevation'] = float(elevation)
                     except (ValueError, TypeError):
                         raise ValueError(f"Invalid elevation value: {elevation}")
+                else:
+                    feature['properties']['elevation'] = 0.0  # Default elevation
     except KeyError as e:
         raise ValueError(f"Error in GeoJSON structure: {str(e)}")
 
@@ -229,7 +225,7 @@ def rasterize_geodataframes(
         maxy = max(maxy, h_maxy)
 
         # Define resolution (adjust as needed)
-        resolution = 0.00005  # Increased precision (approx ~0.5 meters at the equator)
+        resolution = 0.00005  # Approx ~0.5 meters at the equator
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
 
@@ -252,24 +248,27 @@ def rasterize_geodataframes(
             all_touched=True
         )
 
-        # Initialize height_plateaus_raster with zeros
-        height_plateaus_raster = np.zeros((height, width), dtype='float32')
+        # Initialize height_plateaus_raster with zeros (float64 for higher precision)
+        height_plateaus_raster = np.zeros((height, width), dtype='float64')
 
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
-            elevation = row.get('elevation', 0)
-            # Ensure elevation is a valid numeric value
-            elevation = float(elevation) if elevation is not None else 0.0
+            elevation = row.get('elevation', 0.0)  # Default to 0.0 if elevation is missing
+            try:
+                elevation = float(elevation)  # Ensure elevation is a float
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid elevation value at index {idx}: {elevation}")
 
             geom = row.geometry
             if geom.is_empty:
+                print(f"Skipping empty geometry for row {idx}")
                 continue
             raster = rasterio.features.rasterize(
                 [(geom, elevation)],
                 out_shape=(height, width),
                 transform=transform,
                 fill=0,
-                dtype='float32',
+                dtype='float64',
                 all_touched=True
             )
             height_plateaus_raster = np.maximum(height_plateaus_raster, raster)
@@ -304,7 +303,6 @@ def rasterize_geodataframes(
         return height_da, (minx, miny, maxx, maxy), building_limits_gdf, height_plateaus_gdf
     except Exception as e:
         raise ValueError(f"Failed to rasterize GeoDataFrames: {str(e)}")
-
 
 
 def add_height_plateau_to_firebase(geometry: Dict, height: float):
