@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 from typing import Dict, Tuple
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
 
 def rasterize():
     """Fetch rasterized data from the API."""
-    response = requests.put(f"{BASE_URL}/rasterize")
+    response = requests.get(f"{BASE_URL}/rasterize")
+    print(response)
     if response.status_code == 200:
         print("Rasterized data retrieved successfully.")
         return response.json()
