@@ -204,7 +204,7 @@ def rasterize_geodataframes(
             ((geom, 1) for geom in building_limits_gdf.geometry),
             out_shape=(height, width),
             transform=transform,
-            fill=0,
+            fill=0.0,
             dtype='float32',
             all_touched=True
         )
@@ -227,7 +227,7 @@ def rasterize_geodataframes(
                 [(geom, elevation)],
                 out_shape=(height, width),
                 transform=transform,
-                fill=0,
+                fill=0.0,
                 dtype='float32',
                 all_touched=True
             )
