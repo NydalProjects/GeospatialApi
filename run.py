@@ -34,21 +34,10 @@ def rasterize():
         return None
 
 
-def visualize_rasterized_data(rasterized_data: Dict):
+def visualize_rasterized_data(height_da: Dict, bounds):
     """Visualize the rasterized data."""
     try:
         # Extract data
-        height_values = np.array(rasterized_data["height_da"])
-        x_coords = rasterized_data["x_coords"]
-        y_coords = rasterized_data["y_coords"]
-        bounds = rasterized_data["bounds"]
-
-        # Reconstruct the DataArray
-        height_da = xr.DataArray(
-            height_values,
-            coords=[y_coords, x_coords],
-            dims=["y", "x"]
-        )
 
         # Fetch GeoJSON data for overlay
         geo_response = requests.get(f"{BASE_URL}/read")
@@ -60,7 +49,7 @@ def visualize_rasterized_data(rasterized_data: Dict):
         # Convert GeoJSON to GeoDataFrames
         building_limits_gdf = gpd.GeoDataFrame.from_features(geo_data["building_limits"]["features"], crs="epsg:4326")
         height_plateaus_gdf = gpd.GeoDataFrame.from_features(geo_data["height_plateaus"]["features"], crs="epsg:4326")
-
+        print(building_limits_gdf)
         # Plot the rasterized data
         fig, ax = plt.subplots(figsize=(12, 8))
         cmap = plt.get_cmap('viridis').copy()
@@ -99,6 +88,8 @@ def visualize_rasterized_data(rasterized_data: Dict):
 
 if __name__ == "__main__":
     # Fetch and visualize rasterized data
-    rasterized_data = rasterize()
-    if rasterized_data:
-        visualize_rasterized_data(rasterized_data)
+    rasterized_data, bounds = rasterize()
+    print(rasterized_data)
+    print(bounds)
+    if rasterized_data is not None and rasterized_data.size > 0:
+        visualize_rasterized_data(rasterized_data, bounds)

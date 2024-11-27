@@ -179,7 +179,7 @@ def rasterize_geodataframes(
         maxy = max(maxy, h_maxy)
 
         # Define resolution (adjust as needed)
-        resolution = 0.0005  # Approx ~0.5 meters at the equator
+        resolution = 0.000005  # Approx ~0.5 meters at the equator
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
 
