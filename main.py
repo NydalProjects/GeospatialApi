@@ -231,7 +231,7 @@ def rasterize_geodataframes(
                 dtype='int16',
                 all_touched=True
             )
-            raster = mask_raster.astype('float64') * elevation  # Convert to float64 and apply elevation
+            raster = mask_raster.astype('float64')  # Convert to float64 and apply elevation
 
 
             # Multiply the mask by elevation to apply the height
@@ -251,7 +251,7 @@ def rasterize_geodataframes(
         building_mask = building_limits_raster == 1
 
         # Set areas outside building limits to NaN
-        height_da = height_da.where(building_mask, other=np.nan)
+        height_da = height_da.where(building_mask, other=0)
 
         # Set areas inside building limits but not covered by any height plateau to 0
         inside_building_no_plateau = (building_mask) & (np.isnan(height_da))
