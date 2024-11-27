@@ -13,12 +13,13 @@ import firebase_admin
 from firebase_admin import credentials, db
 import os
 from google.cloud import secretmanager
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Optional
+import geopandas as gpd
 
-def get_firebase_credentials():
-    client = secretmanager.SecretManagerServiceClient()
-    secret_name = "projects/{project_id}/secrets/{secret_name}/versions/latest"
-    response = client.access_secret_version(request={"name": secret_name})
-    return response.payload.data.decode("UTF-8")
+# Firebase Initialization
+
 
 def initialize_firebase():
     try:
@@ -37,6 +38,17 @@ def initialize_firebase():
     except Exception as e:
         raise ValueError(f"Failed to initialize Firebase: {str(e)}")
 
+
+# FastAPI Application
+app = FastAPI()
+initialize_firebase()
+
+
+def get_firebase_credentials():
+    client = secretmanager.SecretManagerServiceClient()
+    secret_name = "projects/861222091615/secrets/firebase-secret"
+    response = client.access_secret_version(request={"name": secret_name})
+    return response.payload.data.decode("UTF-8")
 
 def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
     """
@@ -324,17 +336,6 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
     except Exception as e:
         print(f"Failed to modify building limits: {str(e)}")
 
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Optional
-import geopandas as gpd
-
-# Firebase Initialization
-initialize_firebase()
-
-# FastAPI Application
-app = FastAPI()
 
 # Pydantic models for request validation
 class GeoJSON(BaseModel):
