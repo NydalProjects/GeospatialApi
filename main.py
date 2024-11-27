@@ -210,7 +210,7 @@ def rasterize_geodataframes(
         )
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
-        height_plateaus_raster = np.zeros((height, width), dtype='int16')
+        height_plateaus_raster = np.zeros((height, width), dtype='float32')
 
 
         # Rasterize each height plateau and use maximum value in case of overlaps
