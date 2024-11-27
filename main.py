@@ -441,7 +441,7 @@ def rasterize():
         logging.info("rasterize_geodataframes completed")
 
         return {
-            "height_da": "height",
+            "height_da": height_da,
             "bounds": bounds,
         }
     except Exception as e:
