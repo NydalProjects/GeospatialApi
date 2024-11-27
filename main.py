@@ -210,16 +210,16 @@ def rasterize_geodataframes(
             dtype='int16',
             all_touched=True
         )
-        building_limits_raster = building_limits_raster.astype(rasterio.float64)
+        # building_limits_raster = building_limits_raster.astype(rasterio.float64)
 
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
-        height_plateaus_raster = np.zeros((height, width), dtype=rasterio.float64)
+        height_plateaus_raster = np.zeros((height, width))
 
 
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
-            elevation = row.get('elevation', 0)
+            elevation = int(row.get('elevation', 0))
             geom = row.geometry
             if geom.is_empty:
                 continue
@@ -231,7 +231,7 @@ def rasterize_geodataframes(
                 dtype='int16',
                 all_touched=True
             )
-            raster = mask_raster.astype(rasterio.float64)  # Convert to float64 and apply elevation
+            # raster = mask_raster.astype(rasterio.float64)  # Convert to float64 and apply elevation
 
 
             # Multiply the mask by elevation to apply the height
