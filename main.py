@@ -75,13 +75,9 @@ def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
 
                 # Ensure elevation is a valid float
                 elevation = feature['properties'].get('elevation')
-                if elevation is not None:
-                    try:
-                        feature['properties']['elevation'] = float(elevation)
-                    except (ValueError, TypeError):
-                        raise ValueError(f"Invalid elevation value: {elevation}")
-                else:
-                    feature['properties']['elevation'] = 0.0  # Default elevation
+                feature['properties']['elevation'] = float(elevation) if elevation is not None else 0.0
+
+
     except KeyError as e:
         raise ValueError(f"Error in GeoJSON structure: {str(e)}")
 
@@ -161,10 +157,10 @@ def read_geojson_create_geodataframe(geo_dict: Dict) -> Tuple[gpd.GeoDataFrame, 
         if 'elevation' not in height_plateaus_gdf.columns:
             height_plateaus_gdf['elevation'] = 0.0  # Default elevation if missing
         else:
-            # Convert elevation to numeric, replacing invalid values with 0.0
+            # Convert elevation to numeric and handle invalid values
             height_plateaus_gdf['elevation'] = pd.to_numeric(
                 height_plateaus_gdf['elevation'], errors='coerce'
-            ).fillna(0.0)
+            ).fillna(0.0).astype('float32')
 
     except KeyError as e:
         raise ValueError("Failed to create GeoDataFrame: {}".format(str(e)))
@@ -209,6 +205,7 @@ def rasterize_geodataframes(
             out_shape=(height, width),
             transform=transform,
             fill=0,
+            dtype='int16',
             all_touched=True
         )
 
@@ -228,6 +225,7 @@ def rasterize_geodataframes(
                 out_shape=(height, width),
                 transform=transform,
                 fill=0,
+                dtype='int16',
                 all_touched=True
             )
             height_plateaus_raster = np.maximum(height_plateaus_raster, raster)
