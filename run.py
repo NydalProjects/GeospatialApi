@@ -87,87 +87,94 @@ def visualize_rasterized_data(height_da: Dict, bounds):
         print(f"Failed to visualize rasterized data: {str(e)}")
 
 
-
 def update_firebase():
     """Update Firebase with modified building limits and height plateaus."""
-    # Slightly modified building limits polygon
+    # Correctly structured building limits as a FeatureCollection
     new_building_limits = {
-        "type": "Feature",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [10.7579, 59.9134],
-                    [10.7566, 59.9137],
-                    [10.7564, 59.9135],
-                    [10.7563, 59.9133],
-                    [10.7561, 59.9129],
-                    [10.7563, 59.9129],
-                    [10.7575, 59.9128],
-                    [10.7579, 59.9134]
-                ]
-            ]
-        },
-        "properties": {}
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [10.7579, 59.9134],
+                            [10.7566, 59.9137],
+                            [10.7564, 59.9135],
+                            [10.7563, 59.9133],
+                            [10.7561, 59.9129],
+                            [10.7563, 59.9129],
+                            [10.7575, 59.9128],
+                            [10.7579, 59.9134]
+                        ]
+                    ]
+                },
+                "properties": {}
+            }
+        ]
     }
 
-    # Slightly modified height plateaus polygons
-    new_height_plateaus = [
-        {
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [10.7568, 59.9129],
-                        [10.7575, 59.9128],
-                        [10.7579, 59.9134],
-                        [10.7573, 59.9135],
-                        [10.7568, 59.9129]
+    # Correctly structured height plateaus as a list of Features
+    new_height_plateaus = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [10.7568, 59.9129],
+                            [10.7575, 59.9128],
+                            [10.7579, 59.9134],
+                            [10.7573, 59.9135],
+                            [10.7568, 59.9129]
+                        ]
                     ]
-                ]
+                },
+                "properties": {"elevation": 3.75}
             },
-            "properties": {"elevation": 3.75}
-        },
-        {
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [10.7570, 59.9132],
-                        [10.7573, 59.9135],
-                        [10.7566, 59.9137],
-                        [10.7565, 59.9135],
-                        [10.7564, 59.9134],
-                        [10.7570, 59.9132]
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [10.7570, 59.9132],
+                            [10.7573, 59.9135],
+                            [10.7566, 59.9137],
+                            [10.7565, 59.9135],
+                            [10.7564, 59.9134],
+                            [10.7570, 59.9132]
+                        ]
                     ]
-                ]
+                },
+                "properties": {"elevation": 4.75}
             },
-            "properties": {"elevation": 4.75}
-        },
-        {
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [10.7564, 59.9133],
-                        [10.7563, 59.9133],
-                        [10.7561, 59.9129],
-                        [10.7563, 59.9129],
-                        [10.7568, 59.9129],
-                        [10.7570, 59.9132],
-                        [10.7564, 59.9133]
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [10.7564, 59.9133],
+                            [10.7563, 59.9133],
+                            [10.7561, 59.9129],
+                            [10.7563, 59.9129],
+                            [10.7568, 59.9129],
+                            [10.7570, 59.9132],
+                            [10.7564, 59.9133]
+                        ]
                     ]
-                ]
-            },
-            "properties": {"elevation": 2.75}
-        }
-    ]
+                },
+                "properties": {"elevation": 2.75}
+            }
+        ]
+    }
 
     # Update building limits
-    modify_request = {"new_geometry": new_building_limits["geometry"]}
+    modify_request = {"new_geometry": new_building_limits["features"][0]["geometry"]}
     response = requests.put(f"{BASE_URL}/modify-building-limits", json=modify_request)
 
     if response.status_code == 200:
@@ -176,7 +183,7 @@ def update_firebase():
         print(f"Failed to update building limits: {response.text}")
 
     # Update height plateaus
-    for plateau in new_height_plateaus:
+    for plateau in new_height_plateaus["features"]:
         add_request = {
             "geometry": plateau["geometry"],
             "height": plateau["properties"]["elevation"]

@@ -128,8 +128,12 @@ def write_polygons_to_firebase(
 
         # Prepare the data to be written
         data = {
-            'building_limits': building_limits_features,
-            'height_plateaus': height_plateaus_features
+            'building_limits': {
+                "features": building_limits_features  # Ensure "features" is the top-level key
+            },
+            'height_plateaus': {
+                "features": height_plateaus_features  # Ensure "features" is the top-level key
+            }
         }
 
         # Write data to Firebase
@@ -349,27 +353,27 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
 
-        # Update the building limits
-        geo_dict["building_limits"]["features"] = [
-            {
-                "type": "Feature",
-                "geometry": new_geometry,
-                "properties": {}  # Ensure 'properties' key is present
-            }
-        ]
+        # Update the building limits to include the new geometry
+        geo_dict["building_limits"] = {
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": new_geometry,
+                    "properties": {}  # Ensure 'properties' key is present
+                }
+            ]
+        }
 
-        # Validate the structure
-        ensure_properties_in_geojson(geo_dict)
+        # Convert to GeoDataFrames
+        building_limits_gdf = gpd.GeoDataFrame.from_features(
+            geo_dict["building_limits"]["features"], crs="epsg:4326"
+        )
+        height_plateaus_gdf = gpd.GeoDataFrame.from_features(
+            geo_dict["height_plateaus"]["features"], crs="epsg:4326"
+        )
 
         # Write back to Firebase
-        write_polygons_to_firebase(
-            building_limits_gdf=gpd.GeoDataFrame.from_features(
-                geo_dict["building_limits"]["features"], crs="epsg:4326"
-            ),
-            height_plateaus_gdf=gpd.GeoDataFrame.from_features(
-                geo_dict["height_plateaus"]["features"], crs="epsg:4326"
-            )
-        )
+        write_polygons_to_firebase(building_limits_gdf, height_plateaus_gdf)
 
         print("Building limits updated successfully!")
     except Exception as e:
