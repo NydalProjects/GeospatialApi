@@ -3,7 +3,7 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 import geopandas as gpd
-from typing import Dict, Tuple
+from typing import Dict
 import requests
 
 BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
@@ -188,12 +188,17 @@ def validate_height_plateaus():
 
     """Fetch rasterized data from the API."""
 
-    response = requests.post(f"{BASE_URL}/validate-height-plateaus")
+    response = requests.get(f"{BASE_URL}/validate-height-plateaus")
     print(response)
     if response.status_code == 200:
-        print("Building limit splitted successfuly.")
+        rasterized_data = response.json()
+        is_covered = rasterized_data["is_covered"]
+        print(f"Building limits are covered by height plateaus: {is_covered}")
+        uncovered_coords = rasterized_data["uncovered_coords"]
+
     else:
-        print("Failed splitting building limit.")
+        print("Validation of height plateaus failed")
+
 
 # if __name__ == "__main__":
 #     # Example: Delete a height plateau with elevation 3.75

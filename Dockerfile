@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /app
+COPY . .
 
 
 # Install any needed packages specified in requirements.txt

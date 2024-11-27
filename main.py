@@ -47,8 +47,6 @@ def initialize_firebase():
 
 # FastAPI Application
 app = FastAPI()
-initialize_firebase()
-
 
 def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
     """
@@ -85,6 +83,8 @@ def ensure_properties_in_geojson(geo_dict: Dict) -> Dict:
 
 
 def read_geojson_from_firebase() -> Dict:
+    initialize_firebase()
+
     """
     Reads data from Firebase and ensures it conforms to the expected GeoJSON structure.
     """
@@ -119,6 +119,8 @@ def write_polygons_to_firebase(
     height_plateaus_gdf: gpd.GeoDataFrame
 ):
     try:
+        initialize_firebase()
+
         # Convert GeoDataFrames to GeoJSON-like dictionaries
         building_limits_features = json.loads(building_limits_gdf.to_json())['features']
         height_plateaus_features = json.loads(height_plateaus_gdf.to_json())['features']
@@ -283,6 +285,7 @@ def validate_height_plateaus_cover_building_limits(
         - A NumPy array of coordinates where uncovered areas are found (if any).
     """
     try:
+
         # Define rasterization parameters
         minx, miny, maxx, maxy = building_limits_gdf.total_bounds
 
@@ -347,6 +350,8 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
     Adds a new height plateau to the Firebase database, preserving the required structure.
     """
     try:
+        initialize_firebase()
+
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
 
@@ -388,6 +393,8 @@ def delete_height_plateau_from_firebase(target_elevation: float):
     - target_elevation: The elevation value of the plateau to delete.
     """
     try:
+        initialize_firebase()
+
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
 
@@ -429,6 +436,8 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
     - new_geometry: The new GeoJSON geometry for the building limits.
     """
     try:
+        initialize_firebase()
+
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
 
@@ -468,6 +477,8 @@ def split_building_limits_by_height_plateaus():
     """
     try:
         # Fetch existing data
+        initialize_firebase()
+
         geo_dict = read_geojson_from_firebase()
 
         # Convert to GeoDataFrames
@@ -531,10 +542,44 @@ def root():
     return {"message": "Geospatial API is running."}
 
 
+
+@app.get("/upload-shapes")
+def upload_shapes_to_firebase():
+    """
+    Upload the `shapes.json` file to Firebase. The file must be located in the same directory as `main.py`.
+    Ensures compatibility with Google Cloud Run deployments.
+    """
+    try:
+        # Initialize Firebase
+        initialize_firebase()
+
+        # Get the path to `shapes.json`
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shapes.json")
+
+        # Load the JSON file
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+
+        # Validate structure
+        if "building_limits" not in data or "height_plateaus" not in data:
+            raise ValueError("JSON file must contain 'building_limits' and 'height_plateaus' keys.")
+
+        # Reference to the root of the database
+        ref = db.reference('/')
+
+        # Upload the JSON data
+        ref.set(data)
+        return {"message": "shapes.json uploaded successfully to Firebase."}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload shapes.json: {str(e)}")
+
+
 @app.get("/read")
 def read_data():
     """Read data from Firebase."""
     try:
+
         geo_dict = read_geojson_from_firebase()
         return geo_dict
     except Exception as e:
