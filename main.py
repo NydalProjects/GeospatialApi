@@ -178,6 +178,10 @@ def rasterize_geodataframes(
     try:
         # Define the output raster parameters
         # Get combined bounds
+        height_plateaus_gdf['elevation'] = pd.to_numeric(
+            height_plateaus_gdf['elevation'], errors='coerce'
+        ).fillna(0.0)
+
         minx, miny, maxx, maxy = building_limits_gdf.total_bounds
         h_minx, h_miny, h_maxx, h_maxy = height_plateaus_gdf.total_bounds
         minx = min(minx, h_minx)
