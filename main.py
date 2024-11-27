@@ -204,34 +204,31 @@ def rasterize_geodataframes(
             ((geom, 1) for geom in building_limits_gdf.geometry),
             out_shape=(height, width),
             transform=transform,
-            fill=0.0,
-            dtype='float32',
+            fill=0,
+            dtype='int16',
             all_touched=True
         )
         building_limits_raster = building_limits_raster.astype('float32')  # Convert to desired dtype
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
-        height_plateaus_raster = np.zeros((height, width))
-        height_plateaus_raster = height_plateaus_raster.astype('float32')  # Convert to desired dtype
+        height_plateaus_raster = np.zeros((height, width), dtype='float32')
 
 
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
-            elevation = row.get('elevation', 0.0)  # Default to 0.0 if elevation is missing
-
+            elevation = row.get('elevation', 0)
             geom = row.geometry
             if geom.is_empty:
-                print(f"Skipping empty geometry for row {idx}")
                 continue
             raster = rasterio.features.rasterize(
                 [(geom, elevation)],
                 out_shape=(height, width),
                 transform=transform,
-                fill=0.0,
+                fill=0,
                 dtype='float32',
                 all_touched=True
             )
-            height_plateaus_raster = np.maximum(height_plateaus_raster, raster)
+            height_plateaus_raster += raster
 
         # Create xarray DataArray
         x_coords = np.linspace(minx, maxx, width)
@@ -242,7 +239,6 @@ def rasterize_geodataframes(
             coords=[y_coords, x_coords],
             dims=["y", "x"]
         )
-
         # Mask areas outside building limits
         building_mask = building_limits_raster == 1
 
