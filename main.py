@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 import geopandas as gpd
 import rasterio
 import rasterio.features
+import logging
 import numpy as np
 import xarray as xr
 from shapely.geometry import mapping, shape
@@ -408,7 +409,13 @@ def rasterize():
         geo_dict = read_geojson_from_firebase()
         building_limits_gdf, height_plateaus_gdf = read_geojson_create_geodataframe(geo_dict)
         height_da, bounds, _, _ = rasterize_geodataframes(building_limits_gdf, height_plateaus_gdf)
+        logging.info("rasterize_geodataframes completed")
         sanitized_height_da = np.nan_to_num(height_da.values, nan=None, posinf=None, neginf=None)
+        logging.info("sanitized_height_da")
+        logging.info(sanitized_height_da)
+        logging.info(type(sanitized_height_da))
+        sanitized_list = sanitized_height_da.tolist()
+        logging.info(sanitized_list)
 
         return {
             "height_da": sanitized_height_da.tolist(),
