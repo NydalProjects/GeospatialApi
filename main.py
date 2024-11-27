@@ -218,10 +218,6 @@ def rasterize_geodataframes(
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
             elevation = row.get('elevation', 0.0)  # Default to 0.0 if elevation is missing
-            try:
-                elevation = float(elevation)  # Ensure elevation is a float
-            except (ValueError, TypeError):
-                raise ValueError(f"Invalid elevation value at index {idx}: {elevation}")
 
             geom = row.geometry
             if geom.is_empty:
