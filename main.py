@@ -210,7 +210,7 @@ def rasterize_geodataframes(
         )
 
         # Initialize height_plateaus_raster with zeros (float64 for higher precision)
-        height_plateaus_raster = np.zeros((height, width), dtype='float32')
+        height_plateaus_raster = np.zeros((height, width), dtype='int16')
 
 
         # Rasterize each height plateau and use maximum value in case of overlaps
@@ -223,8 +223,8 @@ def rasterize_geodataframes(
                 [(geom, 1)],  # Use 1 as the value for the mask
                 out_shape=(height, width),
                 transform=transform,
-                fill=0.0,
-                dtype='float32',
+                fill=0,
+                dtype='int16',
                 all_touched=True
             )
 
