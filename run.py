@@ -173,9 +173,9 @@ def delete_height_plateau_by_elevation(elevation: float):
     else:
         print(f"Failed to delete height plateau: {response.text}")
 
-if __name__ == "__main__":
-    # Example: Delete a height plateau with elevation 3.75
-    delete_height_plateau_by_elevation(3.63)
+# if __name__ == "__main__":
+#     # Example: Delete a height plateau with elevation 3.75
+#     delete_height_plateau_by_elevation(3.63)
 
 
 # if __name__ == "__main__":

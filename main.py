@@ -310,7 +310,6 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
         print(f"Failed to add height plateau: {str(e)}")
 
 
-
 def delete_height_plateau_from_firebase(target_elevation: float):
     """
     Deletes a specific height plateau with a given elevation value from the Firebase database.
@@ -389,6 +388,55 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
     except Exception as e:
         print(f"Failed to modify building limits: {str(e)}")
 
+
+
+def split_building_limits_by_height_plateaus():
+    """
+    Intersects building limits with height plateaus, splits the building limits
+    based on the intersections, and writes the resulting geometries into Firebase
+    under 'splitted_building_limits'.
+    """
+    try:
+        # Fetch existing data
+        geo_dict = read_geojson_from_firebase()
+
+        # Convert to GeoDataFrames
+        building_limits_gdf = gpd.GeoDataFrame.from_features(
+            geo_dict["building_limits"]["features"], crs="epsg:4326"
+        )
+        height_plateaus_gdf = gpd.GeoDataFrame.from_features(
+            geo_dict["height_plateaus"]["features"], crs="epsg:4326"
+        )
+
+        # Ensure the GeoDataFrames are not empty
+        if building_limits_gdf.empty or height_plateaus_gdf.empty:
+            raise ValueError("Building limits or height plateaus are empty. Cannot proceed with splitting.")
+
+        # Perform intersection
+        splitted_geometries = []
+        for _, building_row in building_limits_gdf.iterrows():
+            for _, plateau_row in height_plateaus_gdf.iterrows():
+                intersection = building_row.geometry.intersection(plateau_row.geometry)
+                if not intersection.is_empty:
+                    splitted_geometries.append({
+                        "type": "Feature",
+                        "geometry": mapping(intersection),
+                        "properties": building_row.get("properties", {})  # Retain properties if any
+                    })
+
+        # Ensure the structure matches 'splitted_building_limits'
+        splitted_building_limits = {
+            "type": "FeatureCollection",
+            "features": splitted_geometries
+        }
+
+        # Write the splitted building limits to Firebase
+        ref = db.reference("/")
+        ref.child("splitted_building_limits").set(splitted_building_limits)
+
+        print("Splitted building limits written successfully!")
+    except Exception as e:
+        print(f"Failed to split building limits: {str(e)}")
 
 
 # Pydantic models for request validation
@@ -473,6 +521,15 @@ def rasterize():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rasterize: {str(e)}")
 
+
+@app.post("/split-building-limits")
+def split_building_limits():
+    """Splits building limits by intersecting with height plateaus."""
+    try:
+        split_building_limits_by_height_plateaus()
+        return {"message": "Splitted building limits written successfully to Firebase."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to split building limits: {str(e)}")
 
 # @app.get("/visualize")
 # def visualize():
