@@ -13,3 +13,6 @@ rioxarray==0.18.1
 geopandas==1.0.1
 shapely==2.0.6
 rasterio==1.4.2
+firebase==4.0.1
+firebase-admin==6.6.0
+google-cloud-secret-manager==2.21.1
