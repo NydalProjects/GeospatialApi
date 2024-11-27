@@ -156,7 +156,7 @@ def rasterize_geodataframes(
         maxy = max(maxy, h_maxy)
 
         # Define resolution (adjust as needed)
-        resolution = 0.000005  # Increased precision (approx ~0.5 meters at the equator)
+        resolution = 0.00005  # Increased precision (approx ~0.5 meters at the equator)
         width = int((maxx - minx) / resolution)
         height = int((maxy - miny) / resolution)
 
@@ -185,6 +185,9 @@ def rasterize_geodataframes(
         # Rasterize each height plateau and use maximum value in case of overlaps
         for idx, row in height_plateaus_gdf.iterrows():
             elevation = row.get('elevation', 0)
+            # Ensure elevation is a valid numeric value
+            elevation = float(elevation) if elevation is not None else 0.0
+
             geom = row.geometry
             if geom.is_empty:
                 continue
@@ -228,6 +231,7 @@ def rasterize_geodataframes(
         return height_da, (minx, miny, maxx, maxy), building_limits_gdf, height_plateaus_gdf
     except Exception as e:
         raise ValueError(f"Failed to rasterize GeoDataFrames: {str(e)}")
+
 
 
 def add_height_plateau_to_firebase(geometry: Dict, height: float):
