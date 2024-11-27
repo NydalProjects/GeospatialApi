@@ -266,15 +266,15 @@ def rasterize_geodataframes(
 
 def add_height_plateau_to_firebase(geometry: Dict, height: float):
     """
-    Adds a new height plateau to the Firebase database.
-    
-    Parameters:
-    - geometry: The GeoJSON geometry of the height plateau.
-    - height: The height value for the plateau.
+    Adds a new height plateau to the Firebase database, preserving the required structure.
     """
     try:
         # Fetch existing data
         geo_dict = read_geojson_from_firebase()
+
+        # Ensure `height_plateaus` is structured correctly
+        if "features" not in geo_dict["height_plateaus"]:
+            geo_dict["height_plateaus"] = {"type": "FeatureCollection", "features": []}
 
         # Add the new plateau
         new_plateau = {
@@ -282,11 +282,10 @@ def add_height_plateau_to_firebase(geometry: Dict, height: float):
             "geometry": geometry,
             "properties": {"elevation": height}  # Ensure 'properties' and 'elevation' keys are present
         }
-
         geo_dict["height_plateaus"]["features"].append(new_plateau)
 
-        # Validate the structure
-        ensure_properties_in_geojson(geo_dict)
+        # Validate and normalize structure
+        # validate_geojson_structure(geo_dict)
 
         # Write back to Firebase
         write_polygons_to_firebase(
@@ -375,6 +374,7 @@ def modify_building_limits_in_firebase(new_geometry: Dict):
         print("Building limits updated successfully!")
     except Exception as e:
         print(f"Failed to modify building limits: {str(e)}")
+
 
 
 # Pydantic models for request validation

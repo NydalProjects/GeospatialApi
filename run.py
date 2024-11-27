@@ -87,13 +87,6 @@ def visualize_rasterized_data(height_da: Dict, bounds):
         print(f"Failed to visualize rasterized data: {str(e)}")
 
 
-# if __name__ == "__main__":
-#     # Fetch and visualize rasterized data
-#     rasterized_data, bounds = rasterize()
-#     print(rasterized_data)
-#     print(bounds)
-#     if rasterized_data is not None and rasterized_data.size > 0:
-#         visualize_rasterized_data(rasterized_data, bounds)
 
 def update_firebase():
     """Update Firebase with modified building limits and height plateaus."""
@@ -195,6 +188,13 @@ def update_firebase():
             print(f"Failed to add height plateau: {response.text}")
 
 
+# if __name__ == "__main__":
+#     update_firebase()
+
 if __name__ == "__main__":
-    # Update Firebase with modified data
-    update_firebase()
+    # Fetch and visualize rasterized data
+    rasterized_data, bounds = rasterize()
+    print(rasterized_data)
+    print(bounds)
+    if rasterized_data is not None and rasterized_data.size > 0:
+        visualize_rasterized_data(rasterized_data, bounds)
