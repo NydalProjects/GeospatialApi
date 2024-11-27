@@ -9,11 +9,8 @@ BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
 
 def rasterize():
     """Fetch rasterized data from the API."""
-    response = requests.get(f"{BASE_URL}/")
-    print(response)
-    exit()
 
-    response = requests.get(f"{BASE_URL}/rasterize")
+    response = requests.put(f"{BASE_URL}/rasterize")
     print(response)
     if response.status_code == 200:
         print("Rasterized data retrieved successfully.")
