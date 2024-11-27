@@ -10,8 +10,6 @@ BASE_URL = "https://my-cloud-run-service-861222091615.us-central1.run.app"
 
 def rasterize():
 
-    """Fetch rasterized data from the API."""
-
     response = requests.put(f"{BASE_URL}/rasterize")
     print(response)
     if response.status_code == 200:
@@ -36,27 +34,21 @@ def rasterize():
 
 
 def visualize_rasterized_data(height_da: Dict, bounds):
-    """Visualize the rasterized data."""
     try:
-        # Extract data
 
-        # Fetch GeoJSON data for overlay
         geo_response = requests.get(f"{BASE_URL}/read")
         if geo_response.status_code != 200:
             print(f"Failed to fetch GeoJSON data: {geo_response.text}")
             return
         geo_data = geo_response.json()
 
-        # Convert GeoJSON to GeoDataFrames
         building_limits_gdf = gpd.GeoDataFrame.from_features(geo_data["building_limits"]["features"], crs="epsg:4326")
         height_plateaus_gdf = gpd.GeoDataFrame.from_features(geo_data["height_plateaus"]["features"], crs="epsg:4326")
         print(building_limits_gdf)
-        # Plot the rasterized data
         fig, ax = plt.subplots(figsize=(12, 8))
         cmap = plt.get_cmap('viridis').copy()
-        cmap.set_bad(color='white')  # For NaN values
+        cmap.set_bad(color='white') 
 
-        # Plot the rasterized height data
         height_da.plot.imshow(
             ax=ax,
             cmap=cmap,
@@ -88,8 +80,6 @@ def visualize_rasterized_data(height_da: Dict, bounds):
 
 
 def update_firebase():
-    """Update Firebase with modified building limits and height plateaus."""
-    # Correctly structured building limits as a FeatureCollection
     new_building_limits = {
         "type": "FeatureCollection",
         "features": [
@@ -115,7 +105,6 @@ def update_firebase():
         ]
     }
 
-    # Correctly structured height plateaus as a FeatureCollection
     new_height_plateaus = {
         "type": "FeatureCollection",
         "features": [
@@ -135,11 +124,9 @@ def update_firebase():
                 },
                 "properties": {"elevation": 3.75}
             },
-            # Add additional features as required
         ]
     }
 
-    # Update building limits
     response = requests.put(
         f"{BASE_URL}/modify-building-limits",
         json={"new_geometry": new_building_limits["features"][0]["geometry"]}
@@ -163,7 +150,6 @@ def update_firebase():
 
 
 def delete_height_plateau_by_elevation(elevation: float):
-    """Delete height plateaus by specifying elevation."""
     response = requests.delete(
         f"{BASE_URL}/delete-height-plateau",
         json={"height": elevation}
@@ -175,8 +161,6 @@ def delete_height_plateau_by_elevation(elevation: float):
 
 def split_building_limits():
 
-    """Fetch rasterized data from the API."""
-
     response = requests.post(f"{BASE_URL}/split-building-limits")
     print(response)
     if response.status_code == 200:
@@ -185,8 +169,6 @@ def split_building_limits():
         print("Failed splitting building limit.")
 
 def validate_height_plateaus():
-
-    """Fetch rasterized data from the API."""
 
     response = requests.get(f"{BASE_URL}/validate-height-plateaus")
     print(response)
@@ -201,8 +183,6 @@ def validate_height_plateaus():
 
 def upload_shapes_to_firebase():
 
-    """Fetch rasterized data from the API."""
-
     response = requests.get(f"{BASE_URL}/upload-shapes")
     if response.status_code == 200:
         print(f"Files are uploaded to firebase successfully")
@@ -212,18 +192,12 @@ def upload_shapes_to_firebase():
 
 # upload_shapes_to_firebase()
 
-# if __name__ == "__main__":
-#     # Example: Delete a height plateau with elevation 3.75
-#     delete_height_plateau_by_elevation(3.63)
+# delete_height_plateau_by_elevation(3.63)
+# update_firebase()
 
-
-# if __name__ == "__main__":
-#     update_firebase()
-
-if __name__ == "__main__":
-    # Fetch and visualize rasterized data
-    rasterized_data, bounds = rasterize()
-    print(rasterized_data)
-    print(bounds)
-    if rasterized_data is not None and rasterized_data.size > 0:
-        visualize_rasterized_data(rasterized_data, bounds)
+# Fetch and visualize rasterized data
+# rasterized_data, bounds = rasterize()
+# print(rasterized_data)
+# print(bounds)
+# if rasterized_data is not None and rasterized_data.size > 0:
+#     visualize_rasterized_data(rasterized_data, bounds)
