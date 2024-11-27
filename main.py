@@ -201,7 +201,7 @@ def rasterize_geodataframes(
 
         # Rasterize building limits
         building_limits_raster = rasterio.features.rasterize(
-            ((geom, 1) for geom in building_limits_gdf.geometry),
+            ((geom, np.float64(1)) for geom in building_limits_gdf.geometry),
             out_shape=(height, width),
             transform=transform,
             fill=0,
@@ -220,7 +220,7 @@ def rasterize_geodataframes(
             if geom.is_empty:
                 continue
             mask_raster = rasterio.features.rasterize(
-                [(geom, 1)],  # Use 1 as the value for the mask
+                [(geom, np.float64(1))],  # Use 1 as the value for the mask
                 out_shape=(height, width),
                 transform=transform,
                 fill=0,
