@@ -5,7 +5,7 @@ This project provides a geospatial API for managing building limits and height p
 ---
 
 ## **Prerequisites**
-- **Python 3.11** installed on your system
+- **Python 3.11/12 installed on your system
 - Internet access for API requests
 
 ---
@@ -54,5 +54,3 @@ split_building_limits()
 6. Validate Height Plateaus
 Check if building limits are fully covered by height plateaus:
 validate_height_plateaus()
-
-Enjoy using the Geospatial API! 🚀
